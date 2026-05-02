@@ -57,13 +57,126 @@
 
   .app {
     display: grid;
-    grid-template-columns: 320px 1fr 420px;
+    grid-template-columns: var(--col-left, 320px) 1fr var(--col-right, 420px);
     grid-template-rows: 56px 1fr;
     height: 100vh;
     gap: 0;
+    --col-left: 320px;
+    --col-right: 420px;
+    --col-left-collapsed: 52px;
+    --col-right-collapsed: 52px;
   }
 
-  /* ── TOP BAR ── */
+  /* Collapsed panel states on desktop */
+  .app.left-collapsed { grid-template-columns: var(--col-left-collapsed) 1fr var(--col-right); }
+  .app.right-collapsed { grid-template-columns: var(--col-left) 1fr var(--col-right-collapsed); }
+  .app.left-collapsed.right-collapsed { grid-template-columns: var(--col-left-collapsed) 1fr var(--col-right-collapsed); }
+
+  /* ── PANEL COLLAPSE TOGGLE BUTTONS ── */
+  .panel-toggle {
+    position: absolute;
+    top: 14px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    z-index: 20;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .panel-toggle:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+  }
+  .panel-toggle svg { width: 12px; height: 12px; stroke-width: 2.5; }
+
+  .scenarios .panel-toggle { right: -11px; }
+  .arch .panel-toggle { left: -11px; }
+
+  /* ── RESIZE HANDLES ── */
+  .resize-handle {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 15;
+    background: transparent;
+    transition: background 0.15s;
+  }
+  .resize-handle:hover,
+  .resize-handle.dragging {
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .resize-handle-left { right: -2px; } /* on scenarios, hanging into chat */
+  .resize-handle-right { left: -2px; } /* on arch, hanging into chat */
+
+  /* When a panel is collapsed, hide its resize handle */
+  .app.left-collapsed .scenarios .resize-handle,
+  .app.right-collapsed .arch .resize-handle {
+    display: none;
+  }
+
+  /* ── COLLAPSED PANEL RAIL ── */
+  .scenarios.collapsed,
+  .arch.collapsed {
+    overflow: hidden;
+  }
+  .scenarios.collapsed > *:not(.panel-toggle):not(.collapsed-rail),
+  .arch.collapsed > *:not(.panel-toggle):not(.collapsed-rail) {
+    display: none !important;
+  }
+
+  .collapsed-rail {
+    display: none; /* shown only when parent is collapsed */
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 0 16px;
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+  }
+  .scenarios.collapsed .collapsed-rail,
+  .arch.collapsed .collapsed-rail {
+    display: flex;
+  }
+  .collapsed-rail-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 10px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 8px;
+    user-select: none;
+  }
+  .collapsed-rail-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--bg-subtle);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+  }
+  .collapsed-rail-icon svg { width: 16px; height: 16px; stroke-width: 2; }
+
+  /* While dragging, disable text selection + transitions */
+  body.resizing { user-select: none; cursor: col-resize; }
+  body.resizing * { pointer-events: none; }
+  body.resizing .resize-handle { pointer-events: auto; }
+
+  /* ── LEFT PANEL: Scenarios ── */
+  .scenarios {
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+    position: relative;
+    min-width: 0;
+  }
   .topbar {
     grid-column: 1 / -1;
     background: var(--bg-elevated);
@@ -114,13 +227,6 @@
   .topbar .toggle-opt.active.off { color: var(--danger); }
   .topbar .toggle-opt.active.on { color: var(--success); }
 
-  /* ── LEFT PANEL: Scenarios ── */
-  .scenarios {
-    background: var(--bg-elevated);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    display: flex; flex-direction: column;
-  }
   .scenarios-header {
     padding: 20px 20px 12px;
     border-bottom: 1px solid var(--border);
@@ -425,6 +531,8 @@
     border-left: 1px solid var(--border);
     overflow-y: auto;
     display: flex; flex-direction: column;
+    position: relative;
+    min-width: 0;
   }
   .arch-header {
     padding: 18px 20px 14px;
@@ -602,11 +710,363 @@
   .disruption-banner.show { display: flex; }
   .disruption-banner svg { width: 14px; height: 14px; stroke-width: 2.5; }
 
-  /* Responsive fallback */
+  /* ── MOBILE NAV BAR (hidden on desktop) ── */
+  .mobile-nav {
+    display: none;
+  }
+
+  /* Panel container — transparent on desktop, slide host on mobile */
+  .panel-container {
+    display: contents; /* on desktop, acts as if it doesn't exist */
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     TABLET  (≤ 1100px)
+     ═══════════════════════════════════════════════════════════ */
   @media (max-width: 1100px) {
-    .app { grid-template-columns: 1fr; grid-template-rows: 56px auto auto auto; }
-    .scenarios { max-height: 260px; border-right: none; border-bottom: 1px solid var(--border); }
-    .arch { border-left: none; border-top: 1px solid var(--border); max-height: 500px; }
+    body { overflow: auto; }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+    }
+
+    /* Hide desktop panel-resize controls on tablet (layout becomes stacked) */
+    .panel-toggle,
+    .resize-handle,
+    .collapsed-rail {
+      display: none !important;
+    }
+
+    .scenarios.collapsed,
+    .arch.collapsed {
+      overflow-y: auto;
+    }
+
+    .scenarios.collapsed > *,
+    .arch.collapsed > * {
+      display: revert !important;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px 16px;
+      height: auto;
+    }
+
+    .topbar .foundation-toggle {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .scenarios {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .chat {
+      min-height: 60vh;
+    }
+
+    .arch {
+      border-left: none;
+      border-top: 1px solid var(--border);
+      max-height: none;
+    }
+
+    .arch-services {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     MOBILE  (≤ 768px) — panel-based navigation
+     ═══════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    body { overflow: hidden; }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 1fr;
+      height: 100dvh;
+      height: 100vh; /* fallback */
+    }
+
+    /* Hide desktop panel-resize controls on mobile */
+    .panel-toggle,
+    .resize-handle,
+    .collapsed-rail {
+      display: none !important;
+    }
+
+    /* Reset any collapsed classes on mobile */
+    .app.left-collapsed,
+    .app.right-collapsed {
+      grid-template-columns: 1fr;
+    }
+
+    .scenarios.collapsed,
+    .arch.collapsed {
+      overflow-y: auto;
+    }
+
+    .scenarios.collapsed > *,
+    .arch.collapsed > * {
+      display: revert !important;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      grid-row: 1;
+      position: relative;
+      z-index: 100;
+      flex-wrap: nowrap;
+      padding: 0 12px;
+      height: 52px;
+      gap: 8px;
+    }
+
+    .topbar .brand-sub { display: none; }
+
+    .topbar .foundation-toggle {
+      width: auto;
+      font-size: 11px;
+    }
+
+    .topbar .toggle-opt {
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    .topbar .toggle-opt svg { display: none; }
+
+    /* ── Panel container ── */
+    .panel-container {
+      display: block; /* override display:contents on mobile */
+      grid-row: 2;
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    /* Each panel slides in/out */
+    .scenarios,
+    .chat,
+    .arch {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      border: none;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.3s ease;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Default: chat is visible, others are off-screen */
+    .scenarios {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .chat {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .arch {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Active panel states */
+    .scenarios.panel-active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .chat.panel-active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .arch.panel-active {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* When scenarios is active, chat slides right */
+    .chat.panel-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
+    /* When arch is active, chat slides left */
+    .chat.panel-left  { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+
+    /* ── Mobile bottom nav ── */
+    .mobile-nav {
+      grid-row: 3;
+      display: flex;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border);
+      z-index: 100;
+    }
+
+    .mobile-nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-nav-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 2;
+    }
+
+    .mobile-nav-btn.active {
+      color: var(--accent);
+    }
+
+    .mobile-nav-btn .nav-badge {
+      position: absolute;
+      top: 6px;
+      right: calc(50% - 18px);
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      border: 2px solid var(--bg-elevated);
+    }
+
+    .mobile-nav-btn { position: relative; }
+
+    /* ── Chat adjustments ── */
+    .chat-scroll {
+      padding: 16px;
+    }
+
+    .chat-input {
+      padding: 10px 12px;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+    }
+
+    .msg .bubble-wrap { max-width: 88%; }
+
+    /* ── Scenarios panel ── */
+    .scenarios-header { padding: 16px 16px 10px; }
+    .scenario-list { padding: 6px; }
+
+    /* ── Architecture panel ── */
+    .arch-layers { padding: 10px; gap: 10px; }
+
+    .arch-services {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .arch-stats {
+      padding: 10px 12px;
+    }
+
+    /* ── Suggested chips ── */
+    .suggested {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 2px;
+    }
+
+    .suggested .chip {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      padding: 0;
+      align-items: flex-end;
+    }
+
+    .modal {
+      border-radius: 20px 20px 0 0;
+      max-height: 90dvh;
+      max-height: 90vh;
+      max-width: 100%;
+    }
+
+    .modal-header { padding: 16px 20px 12px; }
+    .modal-body { padding: 16px; }
+    .modal-tabs { padding: 0 16px; gap: 16px; }
+
+    /* ── Disruption banner ── */
+    .disruption-banner {
+      top: 60px;
+      left: 12px;
+      right: 12px;
+      transform: none;
+      font-size: 11px;
+    }
+
+    @keyframes slide-down {
+      from { transform: translateY(-12px); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
+    }
+
+    /* ── BTS mini ── */
+    .bts-mini-steps { padding: 6px 10px; }
+    .bts-mini-actions { flex-wrap: wrap; gap: 6px; }
+    .bts-mini-actions .bts-btn { margin-left: 0; width: 100%; justify-content: center; }
+
+    /* ── Flow summary ── */
+    .flow-summary { grid-template-columns: repeat(3, 1fr); }
+
+    /* ── Topbar actions ── */
+    .chat-header-actions .chat-header-btn:not(:last-child) { display: none; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     SMALL MOBILE  (≤ 380px)
+     ═══════════════════════════════════════════════════════════ */
+  @media (max-width: 380px) {
+    .topbar .foundation-toggle { font-size: 10px; }
+    .topbar .toggle-opt { padding: 4px 8px; }
+    .arch-services { grid-template-columns: 1fr 1fr; }
+    .flow-summary { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .modal-tabs { gap: 12px; }
+    .modal-tab { font-size: 11.5px; }
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -1117,8 +1577,18 @@
     </div>
   </header>
 
+  <!-- ── PANEL CONTAINER (wraps the 3 panels for mobile slide navigation) ── -->
+  <div class="panel-container">
+
   <!-- ── LEFT: SCENARIOS ── -->
-  <aside class="scenarios">
+  <aside class="scenarios" id="panel-scenarios">
+    <button class="panel-toggle" id="toggle-scenarios" title="Collapse scenarios panel" aria-label="Collapse scenarios panel">
+      <i data-lucide="chevron-left"></i>
+    </button>
+    <div class="collapsed-rail" aria-hidden="true">
+      <div class="collapsed-rail-icon"><i data-lucide="list"></i></div>
+      <div class="collapsed-rail-label">Scenarios</div>
+    </div>
     <div class="scenarios-header">
       <h2>Scenarios</h2>
       <p>Tap a scenario, then send the prompt to compare responses.</p>
@@ -1127,10 +1597,11 @@
     <div class="scenarios-footer">
       <strong style="color:var(--text-secondary);">Tip:</strong> Toggle <em>Without Foundation</em> above to see how SkyAssist behaves without the AWS data layer.
     </div>
+    <div class="resize-handle resize-handle-left" id="resize-left" aria-hidden="true"></div>
   </aside>
 
   <!-- ── CENTER: CHAT ── -->
-  <main class="chat">
+  <main class="chat panel-active" id="panel-chat">
     <div class="disruption-banner" id="disruption-banner">
       <i data-lucide="cloud-lightning"></i>
       <span>Weather event detected · Flight XX-123 delayed 4 hours</span>
@@ -1161,7 +1632,15 @@
   </main>
 
   <!-- ── RIGHT: ARCHITECTURE ── -->
-  <aside class="arch">
+  <aside class="arch" id="panel-arch">
+    <button class="panel-toggle" id="toggle-arch" title="Collapse architecture panel" aria-label="Collapse architecture panel">
+      <i data-lucide="chevron-right"></i>
+    </button>
+    <div class="collapsed-rail" aria-hidden="true">
+      <div class="collapsed-rail-icon"><i data-lucide="layout-grid"></i></div>
+      <div class="collapsed-rail-label">Architecture</div>
+    </div>
+    <div class="resize-handle resize-handle-right" id="resize-right" aria-hidden="true"></div>
     <div class="arch-header">
       <h2><i data-lucide="layout-grid"></i> Live Data Foundation</h2>
     </div>
@@ -1307,6 +1786,25 @@
       </div>
     </div>
   </aside>
+
+  </div><!-- /.panel-container -->
+
+  <!-- ── MOBILE BOTTOM NAV ── -->
+  <nav class="mobile-nav" aria-label="Panel navigation">
+    <button class="mobile-nav-btn" id="nav-scenarios" aria-label="Scenarios">
+      <i data-lucide="list"></i>
+      Scenarios
+    </button>
+    <button class="mobile-nav-btn active" id="nav-chat" aria-label="Chat">
+      <i data-lucide="message-circle"></i>
+      Chat
+      <span class="nav-badge" id="nav-chat-badge" style="display:none;"></span>
+    </button>
+    <button class="mobile-nav-btn" id="nav-arch" aria-label="Architecture">
+      <i data-lucide="layout-grid"></i>
+      Architecture
+    </button>
+  </nav>
 
 </div>
 
@@ -1746,6 +2244,10 @@ function selectScenario(id) {
   renderScenarios();
   resetChat();
   showSuggested();
+  // On mobile, auto-navigate to chat after selecting a scenario
+  if (typeof isMobile === 'function' && isMobile()) {
+    setTimeout(() => switchPanel('chat'), 50);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2536,6 +3038,17 @@ async function animateServices(serviceList, mode) {
   // After done, fade layer highlight but keep service active
   await sleep(500);
   document.querySelectorAll('.arch-layer').forEach(l => l.classList.remove('active'));
+
+  // On mobile: hint the user that the arch panel updated
+  if (typeof isMobile === 'function' && isMobile() && typeof activePanel !== 'undefined' && activePanel !== 'arch' && serviceList.length > 0) {
+    const archBtn = document.getElementById('nav-arch');
+    if (archBtn) {
+      archBtn.style.color = 'var(--accent)';
+      setTimeout(() => {
+        if (activePanel !== 'arch') archBtn.style.color = '';
+      }, 3000);
+    }
+  }
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -2831,6 +3344,266 @@ document.getElementById('chat-form').addEventListener('submit', (e) => {
 
 document.getElementById('btn-reset').addEventListener('click', () => { resetChat(); showSuggested(); });
 document.getElementById('btn-sound').addEventListener('click', toggleSound);
+
+// ═══════════════════════════════════════════════════════════
+// DESKTOP PANEL COLLAPSE + RESIZE
+// ═══════════════════════════════════════════════════════════
+const PANEL_PREFS_KEY = 'sa_panel_prefs_v1';
+const DEFAULT_PREFS = {
+  colLeft: 320,
+  colRight: 420,
+  leftCollapsed: false,
+  rightCollapsed: false
+};
+const MIN_LEFT = 220;
+const MAX_LEFT = 480;
+const MIN_RIGHT = 280;
+const MAX_RIGHT = 560;
+
+function loadPanelPrefs() {
+  try {
+    const raw = localStorage.getItem(PANEL_PREFS_KEY);
+    if (!raw) return { ...DEFAULT_PREFS };
+    return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_PREFS };
+  }
+}
+
+function savePanelPrefs(prefs) {
+  try { localStorage.setItem(PANEL_PREFS_KEY, JSON.stringify(prefs)); } catch {}
+}
+
+const panelPrefs = loadPanelPrefs();
+
+function applyPanelPrefs() {
+  // On mobile/tablet, panel widths and collapse states don't apply
+  if (window.innerWidth <= 1100) return;
+
+  const app = document.querySelector('.app');
+  app.style.setProperty('--col-left', panelPrefs.colLeft + 'px');
+  app.style.setProperty('--col-right', panelPrefs.colRight + 'px');
+  app.classList.toggle('left-collapsed', panelPrefs.leftCollapsed);
+  app.classList.toggle('right-collapsed', panelPrefs.rightCollapsed);
+
+  document.getElementById('panel-scenarios').classList.toggle('collapsed', panelPrefs.leftCollapsed);
+  document.getElementById('panel-arch').classList.toggle('collapsed', panelPrefs.rightCollapsed);
+
+  // Update toggle button icons based on state
+  const leftBtn = document.getElementById('toggle-scenarios');
+  const rightBtn = document.getElementById('toggle-arch');
+  if (leftBtn) {
+    leftBtn.innerHTML = `<i data-lucide="${panelPrefs.leftCollapsed ? 'chevron-right' : 'chevron-left'}"></i>`;
+    leftBtn.title = panelPrefs.leftCollapsed ? 'Expand scenarios panel' : 'Collapse scenarios panel';
+    leftBtn.setAttribute('aria-label', leftBtn.title);
+  }
+  if (rightBtn) {
+    rightBtn.innerHTML = `<i data-lucide="${panelPrefs.rightCollapsed ? 'chevron-left' : 'chevron-right'}"></i>`;
+    rightBtn.title = panelPrefs.rightCollapsed ? 'Expand architecture panel' : 'Collapse architecture panel';
+    rightBtn.setAttribute('aria-label', rightBtn.title);
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function togglePanel(side) {
+  if (side === 'left') {
+    panelPrefs.leftCollapsed = !panelPrefs.leftCollapsed;
+  } else {
+    panelPrefs.rightCollapsed = !panelPrefs.rightCollapsed;
+  }
+  savePanelPrefs(panelPrefs);
+  applyPanelPrefs();
+}
+
+document.getElementById('toggle-scenarios').addEventListener('click', () => togglePanel('left'));
+document.getElementById('toggle-arch').addEventListener('click', () => togglePanel('right'));
+
+// Also let collapsed rail click expand the panel
+document.querySelector('#panel-scenarios .collapsed-rail').addEventListener('click', () => {
+  if (panelPrefs.leftCollapsed) togglePanel('left');
+});
+document.querySelector('#panel-arch .collapsed-rail').addEventListener('click', () => {
+  if (panelPrefs.rightCollapsed) togglePanel('right');
+});
+
+// ─── Drag to resize ───
+function makeResizable(handleEl, side) {
+  let startX = 0;
+  let startWidth = 0;
+
+  function onMouseDown(e) {
+    if (window.innerWidth <= 1100) return;
+    // Don't allow resize when collapsed
+    if (side === 'left' && panelPrefs.leftCollapsed) return;
+    if (side === 'right' && panelPrefs.rightCollapsed) return;
+
+    e.preventDefault();
+    startX = (e.touches ? e.touches[0].clientX : e.clientX);
+    startWidth = side === 'left' ? panelPrefs.colLeft : panelPrefs.colRight;
+
+    handleEl.classList.add('dragging');
+    document.body.classList.add('resizing');
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('touchmove', onMouseMove, { passive: false });
+    document.addEventListener('touchend', onMouseUp);
+  }
+
+  function onMouseMove(e) {
+    e.preventDefault();
+    const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+    const dx = clientX - startX;
+    let newWidth;
+    if (side === 'left') {
+      newWidth = Math.min(MAX_LEFT, Math.max(MIN_LEFT, startWidth + dx));
+      panelPrefs.colLeft = newWidth;
+      document.querySelector('.app').style.setProperty('--col-left', newWidth + 'px');
+    } else {
+      // Dragging right handle right means chat grows, arch shrinks → negate dx
+      newWidth = Math.min(MAX_RIGHT, Math.max(MIN_RIGHT, startWidth - dx));
+      panelPrefs.colRight = newWidth;
+      document.querySelector('.app').style.setProperty('--col-right', newWidth + 'px');
+    }
+  }
+
+  function onMouseUp() {
+    handleEl.classList.remove('dragging');
+    document.body.classList.remove('resizing');
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('touchmove', onMouseMove);
+    document.removeEventListener('touchend', onMouseUp);
+    savePanelPrefs(panelPrefs);
+  }
+
+  handleEl.addEventListener('mousedown', onMouseDown);
+  handleEl.addEventListener('touchstart', onMouseDown, { passive: false });
+
+  // Double-click to reset to default width
+  handleEl.addEventListener('dblclick', () => {
+    if (window.innerWidth <= 1100) return;
+    if (side === 'left') {
+      panelPrefs.colLeft = DEFAULT_PREFS.colLeft;
+      document.querySelector('.app').style.setProperty('--col-left', DEFAULT_PREFS.colLeft + 'px');
+    } else {
+      panelPrefs.colRight = DEFAULT_PREFS.colRight;
+      document.querySelector('.app').style.setProperty('--col-right', DEFAULT_PREFS.colRight + 'px');
+    }
+    savePanelPrefs(panelPrefs);
+  });
+}
+
+makeResizable(document.getElementById('resize-left'), 'left');
+makeResizable(document.getElementById('resize-right'), 'right');
+
+// Apply prefs on load + on resize (re-applies if transitioning desktop↔tablet)
+applyPanelPrefs();
+window.addEventListener('resize', applyPanelPrefs);
+
+// Keyboard shortcut: Cmd/Ctrl + [ toggles left panel, Cmd/Ctrl + ] toggles right panel
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+    if (e.key === '[') { e.preventDefault(); togglePanel('left'); }
+    else if (e.key === ']') { e.preventDefault(); togglePanel('right'); }
+    else if (e.key === '\\') {
+      // Cmd/Ctrl + \ = toggle both (max chat mode)
+      e.preventDefault();
+      const anyOpen = !panelPrefs.leftCollapsed || !panelPrefs.rightCollapsed;
+      panelPrefs.leftCollapsed = anyOpen;
+      panelPrefs.rightCollapsed = anyOpen;
+      savePanelPrefs(panelPrefs);
+      applyPanelPrefs();
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// MOBILE PANEL NAVIGATION
+// ═══════════════════════════════════════════════════════════
+const MOBILE_BREAKPOINT = 768;
+
+function isMobile() {
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+}
+
+let activePanel = 'chat'; // 'scenarios' | 'chat' | 'arch'
+
+function switchPanel(panel) {
+  if (!isMobile()) return;
+
+  const panels = {
+    scenarios: document.getElementById('panel-scenarios'),
+    chat:      document.getElementById('panel-chat'),
+    arch:      document.getElementById('panel-arch')
+  };
+
+  const navBtns = {
+    scenarios: document.getElementById('nav-scenarios'),
+    chat:      document.getElementById('nav-chat'),
+    arch:      document.getElementById('nav-arch')
+  };
+
+  // Remove all state classes
+  Object.values(panels).forEach(p => {
+    p.classList.remove('panel-active', 'panel-left', 'panel-right');
+  });
+  Object.values(navBtns).forEach(b => b.classList.remove('active'));
+
+  // Apply directional slide classes based on panel order
+  const order = ['scenarios', 'chat', 'arch'];
+  const newIdx = order.indexOf(panel);
+  const oldIdx = order.indexOf(activePanel);
+
+  order.forEach((p, i) => {
+    if (p === panel) {
+      panels[p].classList.add('panel-active');
+    } else if (i < newIdx) {
+      panels[p].classList.add('panel-left');
+    } else {
+      panels[p].classList.add('panel-right');
+    }
+  });
+
+  navBtns[panel].classList.add('active');
+  activePanel = panel;
+
+  // Hide arch badge when arch is viewed
+  if (panel === 'arch') {
+    const badge = document.getElementById('nav-arch-badge');
+    if (badge) badge.style.display = 'none';
+  }
+}
+
+// Wire up nav buttons
+document.getElementById('nav-scenarios').addEventListener('click', () => switchPanel('scenarios'));
+document.getElementById('nav-chat').addEventListener('click', () => switchPanel('chat'));
+document.getElementById('nav-arch').addEventListener('click', () => switchPanel('arch'));
+
+// When a scenario is selected on mobile, auto-switch to chat
+// (patched into selectScenario via the mobile nav init block above)
+
+// After a response is received on mobile, the arch nav button gets a subtle
+// accent color hint to indicate the architecture panel updated.
+// This is handled inside animateServices() directly.
+
+// On resize: if going back to desktop, reset panel visibility
+window.addEventListener('resize', () => {
+  if (!isMobile()) {
+    ['panel-scenarios', 'panel-chat', 'panel-arch'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('panel-active', 'panel-left', 'panel-right');
+    });
+  } else {
+    // Re-apply current panel state
+    switchPanel(activePanel);
+  }
+});
+
+// Initialize panel state on load
+if (isMobile()) {
+  switchPanel('chat');
+}
 
 // ═══════════════════════════════════════════════════════════
 // REORDER SCENARIOS — progressive narrative
