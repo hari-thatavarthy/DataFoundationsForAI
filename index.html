@@ -509,6 +509,21 @@
   .chat-input-send:disabled { background: var(--border-strong); cursor: not-allowed; }
   .chat-input-send svg { width: 16px; height: 16px; stroke-width: 2.5; }
 
+  /* Pulse ring on the send button when the input is pre-filled with a prompt */
+  .chat-input-send.pulse-ready {
+    animation: pulse-ready 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-ready {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+    50%      { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0);   }
+  }
+
+  /* Subtle highlight on the pre-filled input to signal it's ready to send */
+  .chat-input-row:has(.chat-input-send.pulse-ready) {
+    border-color: var(--accent-border);
+    background: var(--bg-elevated);
+  }
+
   .suggested {
     display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
   }
@@ -3026,6 +3041,32 @@ function updateStats(mode, latency, accuracy, cost) {
 // ═══════════════════════════════════════════════════════════
 // SEND FLOW
 // ═══════════════════════════════════════════════════════════
+
+// Pre-fill the chat input with the next expected prompt so the presenter
+// can either tap the chip, tap the send button, or press Enter to send.
+function prefillInput(prompt) {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  if (!input || !sendBtn) return;
+  input.value = prompt || '';
+  input.disabled = false;
+  sendBtn.disabled = !prompt;
+  // Visual hint: pulse the send button when prompt is pre-filled
+  if (prompt) {
+    sendBtn.classList.add('pulse-ready');
+  } else {
+    sendBtn.classList.remove('pulse-ready');
+  }
+}
+
+function clearPrefill() {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  if (!input || !sendBtn) return;
+  input.value = '';
+  sendBtn.classList.remove('pulse-ready');
+}
+
 async function sendPrompt(text) {
   const scenario = scenarios.find(s => s.id === state.activeScenario);
   if (!scenario) return;
@@ -3152,6 +3193,9 @@ function showMultiTurnNextChip(scenario) {
   sug.innerHTML = '';
   const nextTurn = scenario.turns[state.turnIndex];
 
+  // Pre-fill input with the next turn's prompt
+  prefillInput(nextTurn.prompt);
+
   const turnChip = document.createElement('button');
   turnChip.className = 'chip';
   turnChip.innerHTML = `<i data-lucide="message-square"></i> Turn ${state.turnIndex + 1}: "${nextTurn.prompt}"`;
@@ -3171,6 +3215,9 @@ function showMultiTurnNextChip(scenario) {
 function showMultiTurnFinale(scenario) {
   const sug = document.getElementById('suggested');
   sug.innerHTML = '';
+
+  // No more prompts in this scenario — clear the input
+  clearPrefill();
 
   const toggleChip = document.createElement('button');
   toggleChip.className = 'chip';
@@ -3206,6 +3253,7 @@ function showSuggested() {
   if (scenario.multiTurn) {
     state.turnIndex = 0;
     const firstTurn = scenario.turns[0];
+    prefillInput(firstTurn.prompt);
     sug.innerHTML = `
       <button class="chip" id="chip-start-mt">
         <i data-lucide="message-square"></i> Turn 1: "${firstTurn.prompt}"
@@ -3219,6 +3267,8 @@ function showSuggested() {
     lucide.createIcons();
     return;
   }
+
+  prefillInput(scenario.prompt);
 
   sug.innerHTML = `
     <button class="chip" data-prompt="${scenario.prompt.replace(/"/g, '&quot;')}">
@@ -3240,6 +3290,9 @@ function showNextScenarioChip() {
   const next = scenarios[idx + 1];
   const sug = document.getElementById('suggested');
   sug.innerHTML = '';
+
+  // Single-turn scenario done — clear the input
+  clearPrefill();
 
   const toggleChip = document.createElement('button');
   toggleChip.className = 'chip';
