@@ -791,14 +791,21 @@
      MOBILE  (≤ 768px) — panel-based navigation
      ═══════════════════════════════════════════════════════════ */
   @media (max-width: 768px) {
-    body { overflow: hidden; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
 
     .app {
-      display: grid;
+      display: grid !important;
       grid-template-rows: auto 1fr auto;
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr !important;
+      flex-direction: initial;
       height: 100dvh;
       height: 100vh; /* fallback */
+      min-height: 0;
+      width: 100%;
+      overflow: hidden;
     }
 
     /* Hide desktop panel-resize controls on mobile */
@@ -811,7 +818,7 @@
     /* Reset any collapsed classes on mobile */
     .app.left-collapsed,
     .app.right-collapsed {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr !important;
     }
 
     .scenarios.collapsed,
@@ -923,10 +930,13 @@
     /* ── Mobile bottom nav ── */
     .mobile-nav {
       grid-row: 3;
-      display: flex;
+      display: flex !important;
       background: var(--bg-elevated);
       border-top: 1px solid var(--border);
       z-index: 100;
+      flex-shrink: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      min-height: 56px;
     }
 
     .mobile-nav-btn {
